@@ -21,5 +21,11 @@
 
     "omnibox": {
         "keyword": "fix"
+    },
+
+    "applications": {
+        "gecko": {
+            "id": "fixl@webextensions.jameselford.com"
+        }
     }
 }
