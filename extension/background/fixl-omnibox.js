@@ -1,5 +1,11 @@
 
-const activeVersions = ["4.4", "5.0.SP2"];
+
+async function activeFixVersions() {
+    let {activeFixVersions} = await browser.storage.sync.get("activeFixVersions");
+    
+    activeFixVersions = activeFixVersions || ["4.4", "5.0.SP2"];
+    return activeFixVersions;
+}
 
 function fieldsByNamePageUrl(fixVersion) {
     return `https://www.onixs.biz/fix-dictionary/${fixVersion}/fields_by_name.html`
@@ -53,7 +59,7 @@ async function getFieldIndex(fixVersion) {
 
 async function updateFixTagCaches() {
 
-    for (let v of activeVersions) {
+    for (let v of await activeFixVersions()) {
         let [fieldsByName, fieldsByTag] = await getFieldIndex(v);
         await 
             Promise.all([browser.storage.local.set({
@@ -65,12 +71,15 @@ async function updateFixTagCaches() {
 
 }
 
-function* matchVersion(prefix) {
+async function matchVersion(prefix) {
+    let result = [];
+    let activeVersions = await activeFixVersions();
     for (let version of activeVersions) {
         if (version.startsWith(prefix)) {
-            yield version;
+            result.push(version);
         }
     }
+    return result;
 }
 
 function keysWithPrefix(prefix, keys) {
@@ -109,7 +118,10 @@ async function getTagSuggestions(text) {
     let matches = {};
     let allMatchedKeys = new Set();
 
-    for (let v of version ? matchVersion(version) : activeVersions) {
+    let versionsToSearch = version ? matchVersion(version) : await activeFixVersions();
+    console.log("searching versions: ", versionsToSearch);
+
+    for (let v of versionsToSearch) {
         if (isName) {
             matches[v] = await fixFieldsByName(searchTerm, v);
             for (let k in matches[v]) {
@@ -155,6 +167,10 @@ browser.omnibox.setDefaultSuggestion({
 
 browser.omnibox.onInputChanged.addListener(async (text, addSuggestions) => {
     let suggestions = await getTagSuggestions(text);
+    if (!suggestions) {
+        return;
+    }
+
     addSuggestions(suggestions.slice(0, 5).map(field => {
         return {
             content: field.tagUrl,
