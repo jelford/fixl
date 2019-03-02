@@ -38,6 +38,7 @@ and neither standard has changed in some years, so this shouldn't go stale.
 The local index is updated whenever:
 * `fixl` is installed
 * `fixl` is updated
+* The list of "active" fix versions is updated in the setting page
 
 That might change in the future; if you're having problems with stale data, let me know.
 
