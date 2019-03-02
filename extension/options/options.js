@@ -28,6 +28,8 @@ async function saveOptions() {
     await browser.storage.sync.set({
         activeFixVersions
     });
+
+    await browser.runtime.sendMessage("options");
 }
 
 async function restoreOptions() {

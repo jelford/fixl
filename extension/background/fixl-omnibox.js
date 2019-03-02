@@ -1,4 +1,4 @@
-
+const ALL_FIX_VERSIONS = ["4.2", "4.4", "5.0", "5.0.SP2"];
 
 async function activeFixVersions() {
     let {activeFixVersions} = await browser.storage.sync.get("activeFixVersions");
@@ -17,6 +17,22 @@ function fieldsByTagPageUrl(fixVersion) {
 
 function urlForSearch(term) {
     return `https://www.onixs.biz/hs-search-results?term=${term}`
+}
+
+function fuzzyMatch(searchTerm, target) {
+    let searchTermIdx = 0;
+    let targetIdx = 0;
+
+    while ((targetIdx < target.length) && (searchTermIdx < searchTerm.length)) {
+        let targetL = target[targetIdx];
+        let searchL = searchTerm[searchTermIdx];
+        if (searchL == targetL) {
+            searchTermIdx++;
+        }
+        targetIdx++;
+    }
+
+    return searchTermIdx >= searchTerm.length;
 }
 
 async function getFieldIndex(fixVersion) {
@@ -45,7 +61,7 @@ async function getFieldIndex(fixVersion) {
         let tagNum = tagNumLink.text;
 
         let info = {
-            tagName, tagUrl, tagNum
+            tagName, tagUrl, tagNum, fixVersion
         };
 
         fieldsByName[tagName] = info;
@@ -58,8 +74,7 @@ async function getFieldIndex(fixVersion) {
 }
 
 async function updateFixTagCaches() {
-
-    for (let v of await activeFixVersions()) {
+    for (let v of ALL_FIX_VERSIONS) {
         let [fieldsByName, fieldsByTag] = await getFieldIndex(v);
         await 
             Promise.all([browser.storage.local.set({
@@ -68,49 +83,70 @@ async function updateFixTagCaches() {
                 [`fix.${v}.tags.byTag`]: fieldsByTag
             })]);
     }
-
 }
 
-async function matchVersion(prefix) {
+async function matchVersion(versionSearchTerm) {
     let result = [];
-    let activeVersions = await activeFixVersions();
-    for (let version of activeVersions) {
-        if (version.startsWith(prefix)) {
+    
+    for (let version of await activeFixVersions()) {
+        if (fuzzyMatch(versionSearchTerm.toUpperCase(), version)) {
             result.push(version);
         }
     }
+
+    if (result.length == 0) {
+        for (let version of ALL_FIX_VERSIONS) {
+            if (fuzzyMatch(versionSearchTerm.toUpperCase(), version)) {
+                result.push(version);
+            }
+        }
+    }
+
+    if (result.length == 0) {
+        console.log("Didn't find any versions matching:", versionSearchTerm);
+    }
+
     return result;
 }
 
-function keysWithPrefix(prefix, keys) {
-    let result = [];
+function keysMatching(searchTerm, keys) {
+    let result = {};
     for (let k in keys) {
-        if (k.toUpperCase().startsWith(prefix.toUpperCase())) {
-            result.push(keys[k]);
+        if (fuzzyMatch(searchTerm.toUpperCase(), k.toUpperCase())) {
+            result[k] = keys[k];
         }
     }
     return result;
 }
 
-async function fixFieldsByTag(prefix, version) {
-    let storageName = `fix.${version}.tags.byTag`;
+async function storageItemsMatching(storageName, searchTerm) {
     let fieldsFromStorage = await browser.storage.local.get(storageName);
     let fields = fieldsFromStorage[storageName];
-    return keysWithPrefix(prefix, fields);
+    let ret = keysMatching(searchTerm, fields);
+    console.log('found:', ret);
+    return ret;
 }
 
-async function fixFieldsByName(prefix, version) {
+async function fixFieldsByTag(searchTerm, version) {
+    let storageName = `fix.${version}.tags.byTag`;
+    return storageItemsMatching(storageName, searchTerm);
+}
+
+async function fixFieldsByName(searchTerm, version) {
     let storageName = `fix.${version}.tags.byName`;
-    let fieldsFromStorage = await browser.storage.local.get(storageName);
-    let fields = fieldsFromStorage[storageName];
-    return keysWithPrefix(prefix, fields);
+    return storageItemsMatching(storageName, searchTerm);
 }
 
 async function getTagSuggestions(text) {
-    let [searchTerm, version] = text.split(/\s+/);
+    let [version, searchTerm] = text.split(/\s+/);
+
+    if (!version) {
+        return;
+    }
 
     if (!searchTerm) {
-        return;
+        searchTerm = version;
+        version = undefined;
     }
 
     let isName = isNaN(searchTerm);
@@ -118,8 +154,7 @@ async function getTagSuggestions(text) {
     let matches = {};
     let allMatchedKeys = new Set();
 
-    let versionsToSearch = version ? matchVersion(version) : await activeFixVersions();
-    console.log("searching versions: ", versionsToSearch);
+    let versionsToSearch = await (version ? matchVersion(version) : activeFixVersions());
 
     for (let v of versionsToSearch) {
         if (isName) {
@@ -135,6 +170,8 @@ async function getTagSuggestions(text) {
         }
     }
 
+    allMatchedKeys = Array.from(allMatchedKeys).sort((a, b) => a.length - b.length);
+    console.log("goign through keys in order", allMatchedKeys);
     let result = [];
     let versions = Object.keys(matches);
     for (let key of allMatchedKeys) {
@@ -174,7 +211,7 @@ browser.omnibox.onInputChanged.addListener(async (text, addSuggestions) => {
     addSuggestions(suggestions.slice(0, 5).map(field => {
         return {
             content: field.tagUrl,
-            description: `${field.tagName}[${field.tagNum}]`
+            description: `${field.tagName}[${field.tagNum}] (${field.fixVersion})`
         };
     }));
 });
@@ -202,5 +239,11 @@ browser.omnibox.onInputEntered.addListener(async (text, disposition) => {
         case "newBackgroundTab":
           openInNewTab(url, false);
           break;
+    }
+});
+
+browser.runtime.onMessage.addListener(async (msg) => {
+    if (msg == "options") {
+        await updateFixTagCaches();
     }
 });
