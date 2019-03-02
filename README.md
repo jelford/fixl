@@ -20,6 +20,9 @@ or
     fix <TagNum>
     
 `fixl` will search a local index of FIX tags from `onixs.biz`, and provide you links to the reference pages.
+You can narrow down results with:
+
+    fix <FieldName or TagNum> <FixVersion>
 
 You can also use
 
