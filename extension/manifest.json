@@ -1,0 +1,25 @@
+{
+    "manifest_version": 2,
+    "name": "fixl",
+    "version": "0.1",
+
+    "developer": {
+        "name": "James Elford",
+        "url": "https://jameselford.com"
+    },
+
+    "description": "Easily look up FIX definitions from the Omnibox",
+
+    "background": {
+        "scripts": ["background/fixl-omnibox.js"]
+    },
+
+    "permissions": [
+        "https://www.onixs.biz/*",
+        "storage"
+    ],
+
+    "omnibox": {
+        "keyword": "fix"
+    }
+}
