@@ -23,3 +23,15 @@ Any way that's convenient to you:
 * Email me directly to make a suggestion.
 
 Whatever works.
+
+## But _how_ to contribute
+
+The addon is pretty simple; there's a single background script (`extension/background/fixl-omnibox.js`) that manages:
+* Building an index of FIX fields by Tag and Name
+* Handling the Omnibox interactions.
+
+Look under `extension` for the source files. It should be pretty straightforward;
+you can find relevant documentation on MDN:
+* How to work the Omnibox ([here](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/omnibox))
+* The Storage API ([here](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/storage))
+* Overview of how extensions are put together ([here](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Anatomy_of_a_WebExtension))
