@@ -54,14 +54,13 @@ async function getFieldIndex(fixVersion) {
 async function updateFixTagCaches() {
 
     for (let v of activeVersions) {
-            let [fieldsByName, fieldsByTag] = await getFieldIndex(v);
-            await 
-                Promise.all([browser.storage.local.set({
-                    [`fix.${v}.tags.byName`]: fieldsByName
-                }), browser.storage.local.set({
-                    [`fix.${v}.tags.byTag`]: fieldsByTag
-                })]);
-            
+        let [fieldsByName, fieldsByTag] = await getFieldIndex(v);
+        await 
+            Promise.all([browser.storage.local.set({
+                [`fix.${v}.tags.byName`]: fieldsByName
+            }), browser.storage.local.set({
+                [`fix.${v}.tags.byTag`]: fieldsByTag
+            })]);
     }
 
 }
@@ -139,20 +138,18 @@ async function getTagSuggestions(text) {
 }
 
 browser.runtime.onInstalled.addListener(async ({reason, temporary}) => {
-    if (temporary) {
-        console.log("Initializing temporary installation");
-    }
 
     switch (reason) {
         case "install":
-            console.log("onInstall");
-            await updateFixTagCaches();
-            break;
         case "update":
-            console.log("onUpdate");
+            // changes infrequently enough that there's no need to keep rebuilding this index.
             await updateFixTagCaches();
             break;
     }
+});
+
+browser.omnibox.setDefaultSuggestion({
+    description: "Search FIX dictionary by tag or field name"
 });
 
 
